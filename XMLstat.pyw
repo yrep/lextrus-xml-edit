@@ -24,6 +24,7 @@ class XMLStatsApp(QMainWindow):
         layout.addWidget(self.tree_widget)
 
         self.load_button = QPushButton("Load XML File")
+        self.load_button.setCursor(Qt.PointingHandCursor)
         self.load_button.clicked.connect(self.load_xml_file)
         layout.addWidget(self.load_button)
 
@@ -180,6 +181,7 @@ class DetailsWindow(QMainWindow):
         layout.addWidget(self.table_widget)
 
         self.save_button = QPushButton("Save as CSV")
+        self.save_button.setCursor(Qt.PointingHandCursor)
         self.save_button.clicked.connect(self.save_as_csv)
         layout.addWidget(self.save_button)
 

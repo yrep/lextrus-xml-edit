@@ -1,4 +1,5 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QListWidget, QFormLayout, QLineEdit, QPushButton, QTreeWidgetItem
+from PySide6.QtCore import Qt
 
 class TabFilterById(QWidget):
     def __init__(self, parent=None):
@@ -17,10 +18,14 @@ class TabFilterById(QWidget):
         self.range_end_input = QLineEdit()
         self.individual_ids_input = QLineEdit()
         self.range_button = QPushButton("Add Range Condition")
+        self.range_button.setCursor(Qt.PointingHandCursor)
         self.individual_button = QPushButton("Add Individual IDs")
+        self.individual_button.setCursor(Qt.PointingHandCursor)
         self.remove_button = QPushButton("Remove by Conditions")
+        self.remove_button.setCursor(Qt.PointingHandCursor)
         self.preserve_button = QPushButton("Preserve by Conditions")
-
+        self.preserve_button.setCursor(Qt.PointingHandCursor)
+        
         # Layout for conditions
         form_layout = QFormLayout()
         form_layout.addRow("Range Start ID:", self.range_start_input)

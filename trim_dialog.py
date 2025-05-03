@@ -31,9 +31,12 @@ class TrimTreeDialog(QDialog):
 
         # Action buttons for Remove, Preserve, and Cancel
         self.remove_button = QPushButton("Remove")
+        self.remove_button.setCursor(Qt.PointingHandCursor)
         self.preserve_button = QPushButton("Preserve")
+        self.preserve_button.setCursor(Qt.PointingHandCursor)
         self.cancel_button = QPushButton("Cancel")
-
+        self.cancel_button.setCursor(Qt.PointingHandCursor)
+        
         # Button Layout
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.remove_button)
@@ -44,8 +47,11 @@ class TrimTreeDialog(QDialog):
 
         # Connect buttons to respective actions
         self.remove_button.clicked.connect(self.remove_action)
+        self.remove_button.setCursor(Qt.PointingHandCursor)
         self.preserve_button.clicked.connect(self.preserve_action)
+        self.preserve_button.setCursor(Qt.PointingHandCursor)
         self.cancel_button.clicked.connect(self.reject)  # Cancel button closes the dialog
+        self.cancel_button.setCursor(Qt.PointingHandCursor)
 
         self.action = None  # Default action, will be set based on user's choice
         self.trim_position = "start"  # Default to "start"

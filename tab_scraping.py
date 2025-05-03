@@ -10,12 +10,14 @@ import os
 import time
 
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QListView,
-                               QHBoxLayout, QMessageBox, QFileDialog)
+                                QHBoxLayout, QMessageBox, QFileDialog)
+from PySide6.QtCore import Qt
 
 
 class TabScraping(QWidget):
     data_scraped = Signal(str)
     begin_scraping_property = Signal(str)
+    scraping_finished = Signal() # for autosave
 
     def __init__(self, parent=None):
         super().__init__()
@@ -47,7 +49,9 @@ class TabScraping(QWidget):
 
         # Add and Remove buttons
         add_button = QPushButton("Add to scraping list", self)
+        add_button.setCursor(Qt.PointingHandCursor)
         remove_button = QPushButton("Remove from scraping list", self)
+        remove_button.setCursor(Qt.PointingHandCursor)
         layout.addWidget(add_button)
         layout.addWidget(remove_button)
 
@@ -62,6 +66,7 @@ class TabScraping(QWidget):
 
         # Begin scraping button
         scrape_button = QPushButton("Begin scraping", self)
+        scrape_button.setCursor(Qt.PointingHandCursor)
         scrape_button.setStyleSheet("""
                             QPushButton {
                                 background-color: #4CAF50;
@@ -70,10 +75,8 @@ class TabScraping(QWidget):
                                 padding: 5px 8px; /* Padding around text */
                                 text-align: center; /* Center text */
                                 text-decoration: none; /* No underline */
-                                display: inline-block; /* Inline-block element */
                                 font-size: 16px; /* Font size */
                                 margin: 2px 1px; /* Margin around button */
-                                cursor: pointer; /* Pointer cursor on hover */
                                 border-radius: 6px; /* Rounded corners */
                             }
                             QPushButton:hover {
@@ -84,7 +87,9 @@ class TabScraping(QWidget):
 
         # Connect signals
         add_button.clicked.connect(self.add_to_scrap_list)
+        add_button.setCursor(Qt.PointingHandCursor)
         remove_button.clicked.connect(self.remove_from_scrap_list)
+        remove_button.setCursor(Qt.PointingHandCursor)
         # scrape_button.clicked.connect(self.begin_scraping)
         scrape_button.clicked.connect(self.parent.start_scraping)
 
@@ -92,34 +97,34 @@ class TabScraping(QWidget):
         layout.addLayout(load_save_buttons_layout)
 
         self.save_actions_button = QPushButton("Save Scraping List")
+        self.save_actions_button.setCursor(Qt.PointingHandCursor)
         self.save_actions_button.clicked.connect(self.save_scraping_list)
         load_save_buttons_layout.addWidget(self.save_actions_button)
 
         self.load_actions_button = QPushButton("Load Scraping List")
+        self.load_actions_button.setCursor(Qt.PointingHandCursor)
         self.load_actions_button.setStyleSheet("""
-                                                 QPushButton {
-                                                     background-color: #f9bf3b;
-                                                     border: none; /* No border */
-                                                     color: white; /* White text */
-                                                     padding: 5px 8px; /* Padding around text */
-                                                     text-align: center; /* Center text */
-                                                     text-decoration: none; /* No underline */
-                                                     display: inline-block; /* Inline-block element */
-                                                     font-size: 16px; /* Font size */
-                                                     margin: 2px 1px; /* Margin around button */
-                                                     cursor: pointer; /* Pointer cursor on hover */
-                                                 }
-                                                 QPushButton:hover {
-                                                     background-color: #f39c12; /* Darker green on hover */
-                                                 }
-                                             """)
+                                                QPushButton {
+                                                    background-color: #f9bf3b;
+                                                    border: none; /* No border */
+                                                    color: white; /* White text */
+                                                    padding: 5px 8px; /* Padding around text */
+                                                    text-align: center; /* Center text */
+                                                    text-decoration: none; /* No underline */
+                                                    font-size: 16px; /* Font size */
+                                                    margin: 2px 1px; /* Margin around button */
+                                                }
+                                                QPushButton:hover {
+                                                    background-color: #f39c12; /* Darker green on hover */
+                                                }
+                                            """)
         self.load_actions_button.clicked.connect(self.load_scraping_list)
         load_save_buttons_layout.addWidget(self.load_actions_button)
 
     def save_scraping_list(self):
         """Save the scrap list to a JSON file."""
         # Open a file dialog to select the file path
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save Scrap List", "./scraping/", "JSON Files (*.json);;All Files (*)")
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Scrap List", "./config/", "JSON Files (*.json);;All Files (*)")
 
         if file_path:
             # Convert the model items to a list of dictionaries
@@ -154,7 +159,7 @@ class TabScraping(QWidget):
     def load_scraping_list(self):
         """Load the scrap list from a JSON file."""
         # Open a file dialog to select the JSON file
-        file_path, _ = QFileDialog.getOpenFileName(self, "Load Scrap List", "./scraping/", "JSON Files (*.json);;All Files (*)")
+        file_path, _ = QFileDialog.getOpenFileName(self, "Load Scrap List", "./config/", "JSON Files (*.json);;All Files (*)")
 
         if file_path:
             # Read the JSON file
@@ -263,6 +268,8 @@ class TabScraping(QWidget):
             self.parent.state.current_property_node = None
             if not_found_pages:
                 self.save_not_found_pages(not_found_pages)
+            
+            self.scraping_finished.emit()
 
             # QMessageBox.information(self, "Scraping Completed", "Scraping process is finished!")
         else:

@@ -1,6 +1,7 @@
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QListWidget, QFormLayout, QComboBox, QLineEdit, QHBoxLayout, \
     QPushButton, QFileDialog, QMessageBox, QInputDialog
+from PySide6.QtCore import Qt
 
 
 class TabFilterById(QWidget):
@@ -16,26 +17,28 @@ class TabFilterById(QWidget):
         self.range_end_input = QLineEdit()
         self.individual_ids_input = QLineEdit()
         self.range_button = QPushButton("Add Range Condition")
+        self.range_button.setCursor(Qt.PointingHandCursor)
         self.individual_button = QPushButton("Add Individual IDs")
+        self.individual_button.setCursor(Qt.PointingHandCursor)
         self.remove_button = QPushButton("Remove by Conditions")
+        self.remove_button.setCursor(Qt.PointingHandCursor)
         self.remove_button.setStyleSheet("""
-                                   QPushButton {
-                                       background-color: #ff4c30;
-                                       border: none; /* No border */
-                                       color: white; /* White text */
-                                       padding: 5px 8px; /* Padding around text */
-                                       text-align: center; /* Center text */
-                                       text-decoration: none; /* No underline */
-                                       display: inline-block; /* Inline-block element */
-                                       font-size: 16px; /* Font size */
-                                       margin: 2px 1px; /* Margin around button */
-                                       cursor: pointer; /* Pointer cursor on hover */
-                                   }
-                                   QPushButton:hover {
-                                       background-color: #96281b; /* Darker green on hover */
-                                   }
-                               """)
+                                    QPushButton {
+                                        background-color: #ff4c30;
+                                        border: none; /* No border */
+                                        color: white; /* White text */
+                                        padding: 5px 8px; /* Padding around text */
+                                        text-align: center; /* Center text */
+                                        text-decoration: none; /* No underline */
+                                        font-size: 16px; /* Font size */
+                                        margin: 2px 1px; /* Margin around button */
+                                    }
+                                    QPushButton:hover {
+                                        background-color: #96281b; /* Darker green on hover */
+                                    }
+                                """)
         self.preserve_button = QPushButton("Preserve by Conditions")
+        self.preserve_button.setCursor(Qt.PointingHandCursor)
         self.preserve_button.setStyleSheet("""
                             QPushButton {
                                 background-color: #4CAF50;
@@ -44,17 +47,17 @@ class TabFilterById(QWidget):
                                 padding: 5px 8px; /* Padding around text */
                                 text-align: center; /* Center text */
                                 text-decoration: none; /* No underline */
-                                display: inline-block; /* Inline-block element */
                                 font-size: 16px; /* Font size */
                                 margin: 2px 1px; /* Margin around button */
-                                cursor: pointer; /* Pointer cursor on hover */
                             }
                             QPushButton:hover {
                                 background-color: #45a049; /* Darker green on hover */
                             }
                         """)
         self.clear_button = QPushButton("Clear Conditions")
+        self.clear_button.setCursor(Qt.PointingHandCursor)
         self.delete_button = QPushButton("Delete Condition")
+        self.delete_button.setCursor(Qt.PointingHandCursor)
 
         # Layout for conditions
         form_layout = QFormLayout()

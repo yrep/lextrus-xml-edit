@@ -10,6 +10,7 @@ class ScalableIconButton(QPushButton):
         self.default_icon_size = QSize(38, 38)  # Default icon size
         self.hover_icon_size = QSize(42, 42)  # Scaled icon size (110%)
         self.setIconSize(self.default_icon_size)
+        self.setCursor(Qt.PointingHandCursor)
 
     def enterEvent(self, event):
         super().enterEvent(event)

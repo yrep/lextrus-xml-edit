@@ -1,0 +1,14 @@
+beautifulsoup4==4.13.4
+bs4==0.0.2
+certifi==2025.4.26
+charset-normalizer==3.4.2
+idna==3.10
+lxml==5.4.0
+PySide6==6.9.0
+PySide6_Addons==6.9.0
+PySide6_Essentials==6.9.0
+requests==2.32.3
+shiboken6==6.9.0
+soupsieve==2.7
+typing_extensions==4.13.2
+urllib3==2.4.0

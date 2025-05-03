@@ -3,7 +3,7 @@ from typing import Callable
 
 import requests
 from PySide6.QtWidgets import QTextEdit
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -33,16 +33,15 @@ class TabCheckMediaLinks(QWidget):
                                                 padding: 5px 8px; /* Padding around text */
                                                 text-align: center; /* Center text */
                                                 text-decoration: none; /* No underline */
-                                                display: inline-block; /* Inline-block element */
                                                 font-size: 16px; /* Font size */
                                                 margin: 2px 1px; /* Margin around button */
-                                                cursor: pointer; /* Pointer cursor on hover */
                                                 border-radius: 6px; /* Rounded corners */
                                             }
                                             QPushButton:hover {
                                                 background-color: #45a049; /* Darker green on hover */
                                             }
                                         """)
+        self.start_check_button.setCursor(Qt.PointingHandCursor)
         layout.addWidget(self.start_check_button)
 
 

@@ -1,0 +1,5 @@
+[
+    "{'param_tag_type': 'div', 'param_tag_class': 'estatebud-property-info', 'path_to_param_name': 'div b', 'dict_name': 'info'}",
+    "{'param_tag_type': 'li', 'param_tag_class': 'estatebud-facility', 'path_to_param_name': 'li b', 'dict_name': 'facilities'}",
+    "{'param_tag_type': 'div', 'param_tag_class': 'estatebud-distance', 'path_to_param_name': 'div b', 'dict_name': 'distances'}"
+]

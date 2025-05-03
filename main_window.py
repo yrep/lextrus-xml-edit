@@ -239,6 +239,7 @@ class MainWindow(QMainWindow):
 
         self.tab_scraping.begin_scraping_property.connect(self.set_scraping_message)
         self.tab_scraping.data_scraped.connect(self.insert_scraped_data)
+        self.tab_scraping.scraping_finished.connect(self.auto_save_scraping_result)
 
         #SPLITTER
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -365,6 +366,19 @@ class MainWindow(QMainWindow):
     #     except requests.RequestException as e:
     #         QMessageBox.critical(self, "Download Error", f"Failed to download the XML: {e}")
 
+    def auto_save_scraping_result(self):
+        now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        folder_path = os.path.join(os.getcwd(), "SCRAPING")
+        os.makedirs(folder_path, exist_ok=True)
+
+        file_path = os.path.join(folder_path, f"autosaved_{now}.xml")
+        try:
+            self.tree.save_as_xml(file_path)
+            QMessageBox.information(self, "Information", f"Scraping complete and results were saved to {file_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Save Error", f"Failed to save scraping result:\n{str(e)}")
+    
+    
     def download_xml(self):
         if self.xml_download_path is None or self.lextrus_xml_url is None:
             QMessageBox.warning(self, "Error", "Settings aren't loaded!")
@@ -675,7 +689,7 @@ class MainWindow(QMainWindow):
             if task_type == "action":
                 QMessageBox.information(self, "Finished Action", "Action finished.")
             elif task_type == "scraping":
-                QMessageBox.information(self, "Scraping Finished", "Scraping has been finished. Please check logs!")
+                QMessageBox.information(self, "Scraping Finished", "Scraping has been finished. Please check logs for errors!")
             else:
                 QMessageBox.information(self, "Finished Task", "Task finished")
         else:

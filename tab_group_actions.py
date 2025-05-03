@@ -2,6 +2,7 @@ import json
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QListWidget, QFormLayout, QComboBox, QLineEdit, QHBoxLayout, \
     QPushButton, QFileDialog, QMessageBox
+from PySide6.QtCore import Qt
 
 
 class TabGroupActions(QWidget):
@@ -58,14 +59,17 @@ class TabGroupActions(QWidget):
         all_buttons_layout.addLayout(button_layout)
 
         self.add_action_button = QPushButton("Add Action")
+        self.add_action_button.setCursor(Qt.PointingHandCursor)
         self.add_action_button.clicked.connect(self.add_action_to_list)
         button_layout.addWidget(self.add_action_button)
 
         self.remove_action_button = QPushButton("Remove Selected Action")
+        self.remove_action_button.setCursor(Qt.PointingHandCursor)
         self.remove_action_button.clicked.connect(self.remove_action_from_list)
         button_layout.addWidget(self.remove_action_button)
 
         self.execute_actions_button = QPushButton("Execute Actions")
+        self.execute_actions_button.setCursor(Qt.PointingHandCursor)
         self.execute_actions_button.clicked.connect(self.execute_actions)
         self.execute_actions_button.setStyleSheet("""
                     QPushButton {
@@ -75,10 +79,8 @@ class TabGroupActions(QWidget):
                         padding: 5px 8px; /* Padding around text */
                         text-align: center; /* Center text */
                         text-decoration: none; /* No underline */
-                        display: inline-block; /* Inline-block element */
                         font-size: 16px; /* Font size */
                         margin: 2px 1px; /* Margin around button */
-                        cursor: pointer; /* Pointer cursor on hover */
                         border-radius: 6px; /* Rounded corners */
                     }
                     QPushButton:hover {
@@ -91,27 +93,27 @@ class TabGroupActions(QWidget):
         all_buttons_layout.addLayout(load_save_buttons_layout)
 
         self.save_actions_button = QPushButton("Save Actions")
+        self.save_actions_button.setCursor(Qt.PointingHandCursor)
         self.save_actions_button.clicked.connect(self.save_actions)
         load_save_buttons_layout.addWidget(self.save_actions_button)
 
         self.load_actions_button = QPushButton("Load Actions")
+        self.load_actions_button.setCursor(Qt.PointingHandCursor)
         self.load_actions_button.setStyleSheet("""
-                                          QPushButton {
-                                              background-color: #f9bf3b;
-                                              border: none; /* No border */
-                                              color: white; /* White text */
-                                              padding: 5px 8px; /* Padding around text */
-                                              text-align: center; /* Center text */
-                                              text-decoration: none; /* No underline */
-                                              display: inline-block; /* Inline-block element */
-                                              font-size: 16px; /* Font size */
-                                              margin: 2px 1px; /* Margin around button */
-                                              cursor: pointer; /* Pointer cursor on hover */
-                                          }
-                                          QPushButton:hover {
-                                              background-color: #f39c12; /* Darker green on hover */
-                                          }
-                                      """)
+                                        QPushButton {
+                                            background-color: #f9bf3b;
+                                            border: none; /* No border */
+                                            color: white; /* White text */
+                                            padding: 5px 8px; /* Padding around text */
+                                            text-align: center; /* Center text */
+                                            text-decoration: none; /* No underline */
+                                            font-size: 16px; /* Font size */
+                                            margin: 2px 1px; /* Margin around button */
+                                        }
+                                        QPushButton:hover {
+                                            background-color: #f39c12; /* Darker green on hover */
+                                        }
+                                    """)
         self.load_actions_button.clicked.connect(self.load_actions)
         load_save_buttons_layout.addWidget(self.load_actions_button)
 
@@ -120,7 +122,7 @@ class TabGroupActions(QWidget):
     def save_actions(self):
         if len(self.actions) > 0:
             options = QFileDialog.Option.DontUseNativeDialog
-            file_name, _ = QFileDialog.getSaveFileName(self, "Save File", "./actions/", "JSON Files (*.json);;All Files (*)",
+            file_name, _ = QFileDialog.getSaveFileName(self, "Save File", "./config/", "JSON Files (*.json);;All Files (*)",
                                                        options=options)
             if file_name:
                 try:
@@ -135,7 +137,7 @@ class TabGroupActions(QWidget):
 
     def load_actions(self):
         options = QFileDialog.Option.DontUseNativeDialog
-        file_name, _ = QFileDialog.getOpenFileName(self, "Open File", "./actions/", "JSON Files (*.json);;All Files (*)",
+        file_name, _ = QFileDialog.getOpenFileName(self, "Open File", "./config/", "JSON Files (*.json);;All Files (*)",
                                                    options=options)
         if file_name:
             try:
