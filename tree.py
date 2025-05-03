@@ -9,7 +9,7 @@ from lxml import etree
 
 from PySide6.QtGui import Qt, QAction
 from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem, QMenu, QInputDialog, QMessageBox
-from lxml import etree
+
 
 
 class TreeWidget(QTreeWidget):
