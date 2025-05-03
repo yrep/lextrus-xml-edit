@@ -1,0 +1,2 @@
+{"action": "remove_node_type", "parent": "property", "child": "price_freq", "value": "month", "condition": "equal", "new_value": ""}
+{"action": "remove_node_type", "parent": "property", "child": "country", "value": "Cyprus", "condition": "does not contain", "new_value": ""}

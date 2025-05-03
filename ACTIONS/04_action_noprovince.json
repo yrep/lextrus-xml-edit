@@ -1,0 +1,1 @@
+{"action": "remove_node_by_condition", "parent": "property", "child": "province", "value": "", "condition": "equal", "new_value": ""}

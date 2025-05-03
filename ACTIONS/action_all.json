@@ -1,0 +1,19 @@
+{"action": "remove_node_by_condition", "parent": "property", "child": "price_freq", "value": "month", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "country", "value": "Cyprus", "condition": "does not contain", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Shop", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Building Plot", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Block of apartments", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Restaurant", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Field", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Commercial Building", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Café", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Apartment Building", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Retail Premises", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Warehouse", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Development Land", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Mixed use", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Industrial Building", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Hotel", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "None", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "type", "value": "Office", "condition": "equal", "new_value": ""}
+{"action": "remove_node_by_condition", "parent": "property", "child": "province", "value": "", "condition": "equal", "new_value": ""}
