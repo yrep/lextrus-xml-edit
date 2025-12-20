@@ -22,6 +22,7 @@ from tab_scraping import TabScraping
 from tree import TreeWidget
 from trim_dialog import TrimTreeDialog
 from worker import Worker
+from tab_find_phones import TabFindPhones
 
 
 class LoadingAnimation(QLabel):
@@ -36,6 +37,9 @@ class LoadingAnimation(QLabel):
         self.circle_size = 15  # Maximum size of the circles
         self.gap = 10  # Gap between circles
         self.side_padding = 20  # Padding on the sides
+        
+        # self.tab_find_phones = TabFindPhones(self)
+        # self.tab_find_phones.progress_updated.connect(self.status_bar.update_progress)
 
     def start_animation(self):
         self.timer.start(100)  # Update every 100 ms
@@ -214,11 +218,14 @@ class MainWindow(QMainWindow):
         self.tab_scraping = TabScraping(self)
         self.tab_filter_by_id = TabFilterById(self)
         self.tab_check_media_links = TabCheckMediaLinks(self)
+        self.tab_find_phones = TabFindPhones(self)
 
         self.tabs.addTab(self.tab_group_actions, "Group actions")
         self.tabs.addTab(self.tab_scraping, "Site scraping")
         self.tabs.addTab(self.tab_filter_by_id, "Filter by ID")
         self.tabs.addTab(self.tab_check_media_links, "Check Media Links")
+        self.tabs.addTab(self.tab_find_phones, "Phone search")
+        
 
         self.tabs.setStyleSheet("""
             QTabBar::tab {
@@ -240,6 +247,10 @@ class MainWindow(QMainWindow):
         self.tab_scraping.begin_scraping_property.connect(self.set_scraping_message)
         self.tab_scraping.data_scraped.connect(self.insert_scraped_data)
         self.tab_scraping.scraping_finished.connect(self.auto_save_scraping_result)
+
+        self.tab_find_phones.progress_updated.connect(
+            lambda value: self.statusBar().showMessage(f"Searching phones... {value}%", 2000)
+        )
 
         #SPLITTER
         splitter = QSplitter(Qt.Orientation.Horizontal)
