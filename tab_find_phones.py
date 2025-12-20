@@ -1,11 +1,49 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QMessageBox, QListWidgetItem, QTextEdit, QSplitter, QFrame, QSizePolicy
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QMessageBox, QListWidgetItem, QTextEdit, QSplitter, QFrame, QTextBrowser, QDialog, QDialogButtonBox
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QGuiApplication, QFont
+from PySide6.QtGui import QGuiApplication, QFont, QTextCharFormat, QBrush, QColor, QTextCursor, QSyntaxHighlighter, QTextDocument
 import re
+
+class EditDescriptionDialog(QDialog):
+    def __init__(self, current_text, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit Description")
+        self.setMinimumSize(600, 400)
+        
+        layout = QVBoxLayout()
+        
+        self.text_edit = QTextEdit()
+        self.text_edit.setText(current_text)
+        self.text_edit.setFont(QFont("Courier", 10))
+        layout.addWidget(self.text_edit)
+        
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+        
+        self.setLayout(layout)
+    
+    def get_text(self):
+        return self.text_edit.toPlainText()
+
+class PhoneHighlighter(QSyntaxHighlighter):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.match_lines = []
+        self.format = QTextCharFormat()
+        self.format.setBackground(QBrush(QColor(255, 255, 200)))
+        
+    def set_match_lines(self, match_lines):
+        self.match_lines = match_lines
+        self.rehighlight()
+        
+    def highlightBlock(self, text):
+        block_number = self.currentBlock().blockNumber()
+        if block_number in self.match_lines:
+            self.setFormat(0, len(text), self.format)
 
 class TabFindPhones(QWidget):
     progress_updated = Signal(int)
-    found_phones = Signal(list)
     
     def __init__(self, parent=None):
         super().__init__()
@@ -32,19 +70,25 @@ class TabFindPhones(QWidget):
         self.copy_button.clicked.connect(self.copy_ids)
         self.copy_button.setEnabled(False)
         
+        self.edit_button = QPushButton("Edit Selected")
+        self.edit_button.setCursor(Qt.PointingHandCursor)
+        self.edit_button.clicked.connect(self.edit_selected_description)
+        self.edit_button.setEnabled(False)
+        
         self.clear_button = QPushButton("Clear")
         self.clear_button.setCursor(Qt.PointingHandCursor)
         self.clear_button.clicked.connect(self.clear_results)
         
         button_layout.addWidget(self.find_button)
         button_layout.addWidget(self.copy_button)
+        button_layout.addWidget(self.edit_button)
         button_layout.addWidget(self.clear_button)
         button_layout.addStretch()
         
         main_layout.addLayout(button_layout)
         
         splitter = QSplitter(Qt.Horizontal)
-        splitter.setHandleWidth(1)
+        splitter.setHandleWidth(3)
         splitter.setStyleSheet("QSplitter::handle { background-color: #cccccc; }")
         
         left_frame = QFrame()
@@ -53,8 +97,8 @@ class TabFindPhones(QWidget):
         left_layout.setSpacing(2)
         left_layout.addWidget(QLabel("Found objects:"))
         self.id_list = QListWidget()
-        self.id_list.setSpacing(2)
-        self.id_list.itemClicked.connect(self.show_selected_text)
+        self.id_list.setSpacing(3)
+        self.id_list.itemClicked.connect(self.on_item_selected)
         left_layout.addWidget(self.id_list)
         splitter.addWidget(left_frame)
         
@@ -62,11 +106,29 @@ class TabFindPhones(QWidget):
         right_layout = QVBoxLayout(right_frame)
         right_layout.setContentsMargins(2, 2, 2, 2)
         right_layout.setSpacing(2)
-        right_layout.addWidget(QLabel("Description text:"))
+        
+        right_top_layout = QHBoxLayout()
+        right_top_layout.addWidget(QLabel("Description text:"))
+        self.save_button = QPushButton("Save Changes")
+        self.save_button.setCursor(Qt.PointingHandCursor)
+        self.save_button.clicked.connect(self.save_description)
+        self.save_button.setEnabled(False)
+        right_top_layout.addStretch()
+        right_top_layout.addWidget(self.save_button)
+        right_layout.addLayout(right_top_layout)
+        
         self.text_preview = QTextEdit()
         self.text_preview.setReadOnly(True)
         self.text_preview.setFont(QFont("Courier", 9))
+        self.highlighter = PhoneHighlighter(self.text_preview.document())
         right_layout.addWidget(self.text_preview)
+        
+        self.text_edit = QTextEdit()
+        self.text_edit.setFont(QFont("Courier", 9))
+        self.text_edit.setVisible(False)
+        self.text_edit.textChanged.connect(self.on_text_changed)
+        right_layout.addWidget(self.text_edit)
+        
         splitter.addWidget(right_frame)
         
         splitter.setSizes([250, 550])
@@ -78,6 +140,31 @@ class TabFindPhones(QWidget):
         
         self.setLayout(main_layout)
         
+        self.current_item_index = -1
+        self.original_text = ""
+        
+    def on_item_selected(self, list_item):
+        if not list_item:
+            return
+        
+        self.edit_button.setEnabled(True)
+        item_index = list_item.data(Qt.UserRole)
+        if item_index is None or item_index >= len(self.found_items):
+            return
+        
+        self.current_item_index = item_index
+        item_data = self.found_items[item_index]
+        self.original_text = item_data['full_text']
+        
+        self.text_preview.setText(item_data['full_text'])
+        self.highlighter.set_match_lines(item_data['match_lines'])
+        self.text_preview.setVisible(True)
+        self.text_edit.setVisible(False)
+        self.save_button.setEnabled(False)
+        
+    def on_text_changed(self):
+        self.save_button.setEnabled(self.text_edit.toPlainText() != self.original_text)
+        
     def find_phones(self):
         if self.parent.tree.topLevelItemCount() == 0:
             QMessageBox.warning(self, "Error", "Load XML file first!")
@@ -86,6 +173,7 @@ class TabFindPhones(QWidget):
         self.find_button.setEnabled(False)
         self.id_list.clear()
         self.text_preview.clear()
+        self.text_edit.clear()
         self.found_items = []
         
         root_item = self.parent.tree.topLevelItem(0)
@@ -118,32 +206,32 @@ class TabFindPhones(QWidget):
                     continue
                     
                 description = en_item.text(1) or ""
-                phone_matches = self.find_phone_matches(description)
+                match_lines = self.find_phone_matches(description)
                 
-                if phone_matches:
+                if match_lines:
                     found_count += 1
                     item_data = {
                         'id': property_id,
                         'full_text': description,
-                        'matches': phone_matches
+                        'desc_item': en_item,
+                        'match_lines': match_lines,
+                        'match_count': len(match_lines)
                     }
                     self.found_items.append(item_data)
                     
-                    item_text = f"ID: {property_id} - found: {', '.join([m[:30] + '...' if len(m) > 30 else m for m in phone_matches[:2]])}"
-                    if len(phone_matches) > 2:
-                        item_text += f" (+{len(phone_matches) - 2})"
-                    
+                    item_text = f"ID: {property_id} - {len(match_lines)} matches"
                     item = QListWidgetItem(item_text)
                     item.setData(Qt.UserRole, len(self.found_items) - 1)
                     self.id_list.addItem(item)
         
         self.stats_label.setText(f"Objects with phones found: {found_count} from {checked_count}")
         self.copy_button.setEnabled(len(self.found_items) > 0)
+        self.edit_button.setEnabled(False)
         self.find_button.setEnabled(True)
         
         if self.found_items and self.id_list.count() > 0:
             self.id_list.setCurrentRow(0)
-            self.show_selected_text(self.id_list.item(0))
+            self.on_item_selected(self.id_list.item(0))
         
         if found_count > 0:
             QMessageBox.information(self, "Search Complete", f"Found {found_count} objects with possible phone numbers.")
@@ -153,77 +241,107 @@ class TabFindPhones(QWidget):
     def find_phone_matches(self, text):
         if not text:
             return []
+        
+        lines = text.split('\n')
+        match_lines = []
+        
+        for i, line in enumerate(lines):
+            line = line.strip()
+            if not line:
+                continue
+                
+            found = False
             
-        matches = []
+            if re.search(r'(\+\d[+\d\s\-\(\)]{6,})', line):
+                found = True
+            
+            if '357' in line:
+                found = True
+            
+            digit_sequences = re.findall(r'(\d[\d\s\-\(\)]{6,}\d)', line)
+            for seq in digit_sequences:
+                clean_seq = re.sub(r'\D', '', seq)
+                if len(clean_seq) >= 7:
+                    found = True
+                    break
+            
+            if re.search(r'(\(\d{3}\)\s*\d{3}[- ]?\d{4})', line):
+                found = True
+            
+            if re.search(r'(\+\d{1,3}[\s\-]?\d{1,4}[\s\-]?\d{3}[\s\-]?\d{4})', line):
+                found = True
+            
+            if re.search(r'(00\d{1,3}[\s\-]?\d{1,4}[\s\-]?\d{3}[\s\-]?\d{4})', line):
+                found = True
+            
+            line_lower = line.lower()
+            keywords = ['contact', 'office', 'call', 'phone', 'mobile', 'tel', 'fax']
+            for keyword in keywords:
+                if keyword in line_lower:
+                    found = True
+                    break
+            
+            if found:
+                match_lines.append(i)
         
-        plus_matches = re.findall(r'(\+\d[+\d\s\-\(\)]{6,})', text)
-        matches.extend(plus_matches)
+        return match_lines
+            
+    def edit_selected_description(self):
+        if self.current_item_index < 0 or self.current_item_index >= len(self.found_items):
+            return
         
-        if '357' in text:
-            matches.append('357 (Cyprus code)')
+        dialog = EditDescriptionDialog(self.original_text, self)
+        if dialog.exec() == QDialog.Accepted:
+            new_text = dialog.get_text()
+            if new_text != self.original_text:
+                self.text_edit.setText(new_text)
+                self.text_preview.setVisible(False)
+                self.text_edit.setVisible(True)
+                self.save_button.setEnabled(True)
+                
+    def save_description(self):
+        if self.current_item_index < 0 or self.current_item_index >= len(self.found_items):
+            return
         
-        digit_sequences = re.findall(r'(\d[\d\s\-\(\)]{6,}\d)', text)
-        for seq in digit_sequences:
-            clean_seq = re.sub(r'\D', '', seq)
-            if len(clean_seq) >= 7:
-                matches.append(seq)
+        new_text = self.text_edit.toPlainText()
+        item_data = self.found_items[self.current_item_index]
         
-        pattern_matches = re.findall(r'(\(\d{3}\)\s*\d{3}[- ]?\d{4})', text)
-        matches.extend(pattern_matches)
-        
-        intl_matches = re.findall(r'(\+\d{1,3}[\s\-]?\d{1,4}[\s\-]?\d{3}[\s\-]?\d{4})', text)
-        matches.extend(intl_matches)
-        
-        country_matches = re.findall(r'(00\d{1,3}[\s\-]?\d{1,4}[\s\-]?\d{3}[\s\-]?\d{4})', text)
-        matches.extend(country_matches)
-        
-        text_lower = text.lower()
-        keywords = ['contact', 'office', 'call', 'phone', 'mobile', 'tel']
-        for keyword in keywords:
-            if keyword in text_lower:
-                idx = text_lower.find(keyword)
-                start = max(0, idx - 15)
-                end = min(len(text), idx + len(keyword) + 15)
-                context = text[start:end]
-                matches.append(f"{keyword}: {context}")
-        
-        return list(set(matches))[:5]
-        
+        try:
+            item_data['desc_item'].setText(1, new_text)
+            item_data['full_text'] = new_text
+            
+            match_lines = self.find_phone_matches(new_text)
+            item_data['match_lines'] = match_lines
+            item_data['match_count'] = len(match_lines)
+            
+            self.text_preview.setText(new_text)
+            self.highlighter.set_match_lines(match_lines)
+            
+            self.text_preview.setVisible(True)
+            self.text_edit.setVisible(False)
+            self.save_button.setEnabled(False)
+            
+            self.update_list_item(self.current_item_index, len(match_lines))
+            
+            QMessageBox.information(self, "Success", "Description saved to tree.")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save description: {str(e)}")
+            
+    def update_list_item(self, item_index, match_count):
+        for i in range(self.id_list.count()):
+            item = self.id_list.item(i)
+            if item.data(Qt.UserRole) == item_index:
+                item_text = f"ID: {self.found_items[item_index]['id']} - {match_count} matches"
+                item.setText(item_text)
+                break
+            
     def find_child_by_text(self, parent_item, text):
         for i in range(parent_item.childCount()):
             child = parent_item.child(i)
             if child.text(0) == text:
                 return child
         return None
-        
-    def show_selected_text(self, list_item):
-        if not list_item:
-            return
-            
-        item_index = list_item.data(Qt.UserRole)
-        if item_index is None or item_index >= len(self.found_items):
-            return
-            
-        item_data = self.found_items[item_index]
-        display_text = f"ID: {item_data['id']}\n"
-        display_text += "=" * 50 + "\n\n"
-        display_text += "Found matches:\n"
-        
-        for i, match in enumerate(item_data['matches'], 1):
-            display_text += f"{i}. {match}\n"
-        
-        display_text += "\n" + "=" * 50 + "\n\n"
-        display_text += "Full description:\n"
-        display_text += "-" * 50 + "\n"
-        
-        full_text = item_data['full_text']
-        for match in item_data['matches']:
-            phone_part = match.split(": ")[-1] if ": " in match else match
-            if phone_part and phone_part in full_text:
-                full_text = full_text.replace(phone_part, f"***{phone_part}***")
-        
-        display_text += full_text
-        self.text_preview.setText(display_text)
         
     def copy_ids(self):
         if not self.found_items:
@@ -238,6 +356,13 @@ class TabFindPhones(QWidget):
     def clear_results(self):
         self.id_list.clear()
         self.text_preview.clear()
+        self.text_edit.clear()
         self.found_items = []
         self.stats_label.setText("")
         self.copy_button.setEnabled(False)
+        self.edit_button.setEnabled(False)
+        self.save_button.setEnabled(False)
+        self.text_preview.setVisible(True)
+        self.text_edit.setVisible(False)
+        self.current_item_index = -1
+        self.highlighter.set_match_lines([])
