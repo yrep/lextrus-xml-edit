@@ -81,35 +81,106 @@ class TabFindPhones(QWidget):
         button_layout = QHBoxLayout()
         button_layout.setSpacing(5)
         
+        # Стиль для всех кнопок
+        button_style = """
+            QPushButton {
+                padding: 8px 15px;
+                border: 2px solid #ccc;
+                border-radius: 5px;
+                background-color: #f0f0f0;
+                font-weight: bold;
+                color: #333;
+                margin: 2px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+                border-color: #999;
+            }
+            QPushButton:pressed {
+                background-color: #d0d0d0;
+                border-color: #777;
+                padding-top: 9px;
+                padding-bottom: 7px;
+            }
+            QPushButton:disabled {
+                background-color: #f8f8f8;
+                color: #aaa;
+                border-color: #ddd;
+            }
+        """
+        
         self.find_button = QPushButton("Find Phones")
         self.find_button.setCursor(Qt.PointingHandCursor)
         self.find_button.clicked.connect(self.find_phones)
+        self.find_button.setStyleSheet(button_style)
         
         self.copy_button = QPushButton("Copy ID List")
         self.copy_button.setCursor(Qt.PointingHandCursor)
         self.copy_button.clicked.connect(self.copy_ids)
         self.copy_button.setEnabled(False)
+        self.copy_button.setStyleSheet(button_style)
         
         self.edit_button = QPushButton("Edit Selected")
-        self.edit_button.setStyleSheet("background-color: #90EE90;")
         self.edit_button.setCursor(Qt.PointingHandCursor)
         self.edit_button.clicked.connect(self.edit_selected_description)
         self.edit_button.setEnabled(False)
+        self.edit_button.setStyleSheet(button_style + """
+            QPushButton:enabled {
+                background-color: #90EE90;
+                border-color: #70c070;
+            }
+            QPushButton:enabled:hover {
+                background-color: #80dd80;
+                border-color: #60b060;
+            }
+            QPushButton:enabled:pressed {
+                background-color: #70cc70;
+                border-color: #50a050;
+            }
+        """)
         
         self.pass_button = QPushButton("Pass")
-        self.pass_button.setStyleSheet("background-color: #ADD8E6;")
         self.pass_button.setCursor(Qt.PointingHandCursor)
         self.pass_button.clicked.connect(self.mark_as_passed)
         self.pass_button.setEnabled(False)
+        self.pass_button.setStyleSheet(button_style + """
+            QPushButton:enabled {
+                background-color: #ADD8E6;
+                border-color: #8db8c6;
+            }
+            QPushButton:enabled:hover {
+                background-color: #9dc8d6;
+                border-color: #7da8b6;
+            }
+            QPushButton:enabled:pressed {
+                background-color: #8db8c6;
+                border-color: #6d98a6;
+            }
+        """)
         
         self.save_button = QPushButton("Save Changes")
         self.save_button.setCursor(Qt.PointingHandCursor)
         self.save_button.clicked.connect(self.save_description)
         self.save_button.setEnabled(False)
+        self.save_button.setStyleSheet(button_style + """
+            QPushButton:enabled {
+                background-color: #FFA500;
+                border-color: #df8500;
+            }
+            QPushButton:enabled:hover {
+                background-color: #ef9500;
+                border-color: #cf7500;
+            }
+            QPushButton:enabled:pressed {
+                background-color: #df8500;
+                border-color: #bf6500;
+            }
+        """)
         
         self.clear_button = QPushButton("Clear")
         self.clear_button.setCursor(Qt.PointingHandCursor)
         self.clear_button.clicked.connect(self.clear_results)
+        self.clear_button.setStyleSheet(button_style)
         
         button_layout.addWidget(self.find_button)
         button_layout.addWidget(self.copy_button)
@@ -133,6 +204,31 @@ class TabFindPhones(QWidget):
         self.id_list = QListWidget()
         self.id_list.setSpacing(3)
         self.id_list.itemClicked.connect(self.on_item_selected)
+        
+        # Правильный стиль списка - текст всегда черный
+        self.id_list.setStyleSheet("""
+            QListWidget {
+                background-color: white;
+            }
+            QListWidget::item {
+                color: black;
+                padding: 5px;
+            }
+            QListWidget::item:selected {
+                background-color: rgba(100, 150, 220, 150);
+                border-left: 3px solid #0066CC;
+                color: black;
+            }
+            QListWidget::item:selected:!active {
+                background-color: rgba(100, 150, 220, 100);
+                border-left: 3px solid #0066CC;
+                color: black;
+            }
+            QListWidget::item:hover {
+                background-color: #e9ecef;
+            }
+        """)
+        
         left_layout.addWidget(self.id_list)
         splitter.addWidget(left_frame)
         
@@ -210,9 +306,12 @@ class TabFindPhones(QWidget):
         self.save_button.setEnabled(item_data.get('state') == 'edited')
         
         if item_data.get('state') == 'edited':
-            self.save_button.setStyleSheet("background-color: #FFA500;")
-        else:
-            self.save_button.setStyleSheet("")
+            self.save_button.setStyleSheet(self.save_button.styleSheet() + """
+                QPushButton:enabled {
+                    background-color: #FFA500;
+                    border-color: #df8500;
+                }
+            """)
         
         if item_data.get('state') == 'edited':
             display_text = item_data.get('edited_text', item_data['full_text'])
@@ -231,6 +330,8 @@ class TabFindPhones(QWidget):
             self.text_preview.setVisible(True)
             self.text_edit.setVisible(False)
             self.edit_mode = False
+        
+        self.update_item_colors()
     
     def on_text_changed(self):
         if self.current_item_index < 0 or self.current_item_index >= len(self.found_items):
@@ -242,17 +343,12 @@ class TabFindPhones(QWidget):
         if new_text != item_data.get('original_text', item_data['full_text']):
             item_data['state'] = 'edited'
             item_data['edited_text'] = new_text
+            self.save_button.setEnabled(True)
         else:
             item_data['state'] = 'none'
             if 'edited_text' in item_data:
                 del item_data['edited_text']
-        
-        self.save_button.setEnabled(item_data['state'] == 'edited')
-        
-        if item_data['state'] == 'edited':
-            self.save_button.setStyleSheet("background-color: #FFA500;")
-        else:
-            self.save_button.setStyleSheet("")
+            self.save_button.setEnabled(False)
         
         self.update_item_colors()
         
@@ -272,6 +368,8 @@ class TabFindPhones(QWidget):
                     item.setBackground(QColor(255, 165, 0))
                 else:
                     item.setBackground(Qt.transparent)
+                
+                item.setForeground(QColor(0, 0, 0))
         
     def find_phones(self):
         if self.parent.tree.topLevelItemCount() == 0:
@@ -383,7 +481,6 @@ class TabFindPhones(QWidget):
         self.edit_button.setEnabled(False)
         self.pass_button.setEnabled(False)
         self.save_button.setEnabled(False)
-        self.save_button.setStyleSheet("")
         self.find_button.setEnabled(True)
         
         if self.found_items and self.id_list.count() > 0:
@@ -500,7 +597,6 @@ class TabFindPhones(QWidget):
                 item_data['state'] = 'edited'
                 item_data['edited_text'] = new_text
                 self.save_button.setEnabled(True)
-                self.save_button.setStyleSheet("background-color: #FFA500;")
             
             self.update_item_colors()
                 
@@ -532,7 +628,6 @@ class TabFindPhones(QWidget):
             self.text_edit.setVisible(False)
             self.edit_mode = False
             self.save_button.setEnabled(False)
-            self.save_button.setStyleSheet("")
             
             self.update_item_colors()
             
@@ -557,10 +652,8 @@ class TabFindPhones(QWidget):
             self.edit_mode = False
         
         self.save_button.setEnabled(False)
-        self.save_button.setStyleSheet("")
         
         self.update_item_colors()
-        self.on_item_selected(self.id_list.item(self.current_item_index))
             
     def find_child_by_text(self, parent_item, text):
         for i in range(parent_item.childCount()):
@@ -594,4 +687,3 @@ class TabFindPhones(QWidget):
         self.edit_mode = False
         self.current_item_index = -1
         self.highlighter.set_matches([])
-        self.save_button.setStyleSheet("")
