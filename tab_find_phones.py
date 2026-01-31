@@ -204,20 +204,17 @@ class TabFindPhones(QWidget):
         self.current_item_index = item_index
         item_data = self.found_items[item_index]
         
-        text_changed = item_data.get('text_changed', False)
-        status = item_data.get('status', '')
-        
         self.edit_button.setEnabled(True)
         self.pass_button.setEnabled(True)
         
-        self.save_button.setEnabled(text_changed and status != 'passed')
+        self.save_button.setEnabled(item_data.get('state') == 'edited')
         
-        if text_changed and status != 'passed':
+        if item_data.get('state') == 'edited':
             self.save_button.setStyleSheet("background-color: #FFA500;")
         else:
             self.save_button.setStyleSheet("")
         
-        if text_changed or self.edit_mode:
+        if item_data.get('state') == 'edited':
             display_text = item_data.get('edited_text', item_data['full_text'])
             self.text_edit.setText(display_text)
             self.text_preview.setVisible(False)
@@ -227,7 +224,6 @@ class TabFindPhones(QWidget):
             display_text = item_data['full_text']
             self.text_preview.setText(display_text)
             
-            # Ищем совпадения в тексте, который сейчас отображается в text_preview
             current_displayed_text = self.text_preview.toPlainText()
             matches_info = self.find_phone_matches(current_displayed_text)
             self.highlighter.set_matches(matches_info['matches'])
@@ -243,19 +239,17 @@ class TabFindPhones(QWidget):
         new_text = self.text_edit.toPlainText()
         item_data = self.found_items[self.current_item_index]
         
-        original_text = item_data.get('original_text', item_data['full_text'])
-        text_changed = new_text != original_text
-        status = item_data.get('status', '')
-        
-        item_data['text_changed'] = text_changed
-        if text_changed:
+        if new_text != item_data.get('original_text', item_data['full_text']):
+            item_data['state'] = 'edited'
             item_data['edited_text'] = new_text
-            if status == 'passed':
-                item_data['status'] = ''
+        else:
+            item_data['state'] = 'none'
+            if 'edited_text' in item_data:
+                del item_data['edited_text']
         
-        self.save_button.setEnabled(text_changed and status != 'passed')
+        self.save_button.setEnabled(item_data['state'] == 'edited')
         
-        if text_changed and status != 'passed':
+        if item_data['state'] == 'edited':
             self.save_button.setStyleSheet("background-color: #FFA500;")
         else:
             self.save_button.setStyleSheet("")
@@ -268,14 +262,13 @@ class TabFindPhones(QWidget):
             item_index = item.data(Qt.UserRole)
             if item_index is not None and item_index < len(self.found_items):
                 item_data = self.found_items[item_index]
-                status = item_data.get('status', '')
-                text_changed = item_data.get('text_changed', False)
+                state = item_data.get('state', 'none')
                 
-                if status == 'saved':
+                if state == 'saved':
                     item.setBackground(QColor(144, 238, 144))
-                elif status == 'passed':
+                elif state == 'passed':
                     item.setBackground(QColor(173, 216, 230))
-                elif text_changed:
+                elif state == 'edited':
                     item.setBackground(QColor(255, 165, 0))
                 else:
                     item.setBackground(Qt.transparent)
@@ -343,8 +336,7 @@ class TabFindPhones(QWidget):
                         'original_text': raw_description,
                         'desc_item': en_item,
                         'stats': stats,
-                        'status': '',
-                        'text_changed': False,
+                        'state': 'none',
                         'has_email': stats.get('email', 0) > 0,
                         'has_phone': stats.get('phone', 0) > 0,
                         'has_keyword': stats.get('keyword', 0) > 0
@@ -487,17 +479,14 @@ class TabFindPhones(QWidget):
         
         item_data = self.found_items[self.current_item_index]
         
-        if item_data.get('status') == 'passed':
+        if item_data.get('state') == 'passed':
             reply = QMessageBox.question(self, "Item Passed", 
                                        "This item is marked as passed. Do you want to edit it anyway?",
                                        QMessageBox.Yes | QMessageBox.No)
             if reply == QMessageBox.No:
                 return
         
-        if item_data.get('text_changed', False):
-            current_text = item_data.get('edited_text', item_data['full_text'])
-        else:
-            current_text = item_data['full_text']
+        current_text = item_data['full_text']
         
         dialog = EditDescriptionDialog(current_text, self)
         if dialog.exec() == QDialog.Accepted:
@@ -507,12 +496,13 @@ class TabFindPhones(QWidget):
             self.text_edit.setVisible(True)
             self.edit_mode = True
             
-            item_data['text_changed'] = True
-            item_data['edited_text'] = new_text
-            if item_data.get('status') == 'passed':
-                item_data['status'] = ''
+            if new_text != item_data['full_text']:
+                item_data['state'] = 'edited'
+                item_data['edited_text'] = new_text
+                self.save_button.setEnabled(True)
+                self.save_button.setStyleSheet("background-color: #FFA500;")
             
-            self.on_text_changed()
+            self.update_item_colors()
                 
     def save_description(self):
         if self.current_item_index < 0 or self.current_item_index >= len(self.found_items):
@@ -520,25 +510,20 @@ class TabFindPhones(QWidget):
         
         item_data = self.found_items[self.current_item_index]
         
-        if item_data.get('text_changed', False):
-            new_text = item_data.get('edited_text', item_data['full_text'])
-        else:
-            new_text = item_data['full_text']
+        new_text = self.text_edit.toPlainText()
         
         try:
             item_data['desc_item'].setText(1, new_text)
             
             item_data['full_text'] = new_text
             item_data['original_text'] = new_text
-            item_data['status'] = 'saved'
-            item_data['text_changed'] = False
+            item_data['state'] = 'saved'
             
             if 'edited_text' in item_data:
                 del item_data['edited_text']
             
             self.text_preview.setText(new_text)
             
-            # Ищем совпадения в тексте, который сейчас отображается в text_preview
             current_displayed_text = self.text_preview.toPlainText()
             matches_info = self.find_phone_matches(current_displayed_text)
             self.highlighter.set_matches(matches_info['matches'])
@@ -561,8 +546,7 @@ class TabFindPhones(QWidget):
             return
         
         item_data = self.found_items[self.current_item_index]
-        item_data['status'] = 'passed'
-        item_data['text_changed'] = False
+        item_data['state'] = 'passed'
         
         if 'edited_text' in item_data:
             del item_data['edited_text']
