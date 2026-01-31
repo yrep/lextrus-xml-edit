@@ -1,7 +1,9 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QMessageBox, QListWidgetItem, QTextEdit, QSplitter, QFrame, QTextBrowser, QDialog, QDialogButtonBox
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QMessageBox, QListWidgetItem, QTextEdit, QSplitter, QFrame, QDialog, QDialogButtonBox
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QGuiApplication, QFont, QTextCharFormat, QBrush, QColor, QTextCursor, QSyntaxHighlighter, QTextDocument
+from PySide6.QtGui import QGuiApplication, QFont, QTextCharFormat, QBrush, QColor, QSyntaxHighlighter
 import re
+import os
+import configparser
 
 class EditDescriptionDialog(QDialog):
     def __init__(self, current_text, parent=None):
@@ -29,19 +31,16 @@ class EditDescriptionDialog(QDialog):
 class PhoneHighlighter(QSyntaxHighlighter):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.matches = []  # Список кортежей (start_pos, end_pos, match_type)
+        self.matches = []
         self.formats = {
             'phone': QTextCharFormat(),
             'email': QTextCharFormat(),
-            'cyprus': QTextCharFormat(),
             'keyword': QTextCharFormat()
         }
         
-        # Настраиваем форматы
-        self.formats['phone'].setBackground(QBrush(QColor(255, 255, 200)))  # Светло-желтый для телефонов
-        self.formats['email'].setBackground(QBrush(QColor(200, 255, 200)))  # Светло-зеленый для email
-        self.formats['cyprus'].setBackground(QBrush(QColor(200, 200, 255)))  # Светло-синий для кода Кипра
-        self.formats['keyword'].setBackground(QBrush(QColor(255, 200, 200)))  # Светло-красный для ключевых слов
+        self.formats['phone'].setBackground(QBrush(QColor(255, 255, 200)))
+        self.formats['email'].setBackground(QBrush(QColor(200, 255, 200)))
+        self.formats['keyword'].setBackground(QBrush(QColor(255, 200, 200)))
         
     def set_matches(self, matches):
         self.matches = matches
@@ -51,14 +50,11 @@ class PhoneHighlighter(QSyntaxHighlighter):
         if not self.matches:
             return
             
-        # Получаем позиции начала и конца текущего блока
         block_start = self.currentBlock().position()
         block_end = block_start + len(text)
         
-        # Находим совпадения, которые попадают в этот блок
         for match_start, match_end, match_type in self.matches:
             if match_start >= block_start and match_end <= block_end:
-                # Преобразуем глобальные позиции в позиции внутри блока
                 local_start = match_start - block_start
                 local_end = match_end - block_start
                 
@@ -72,6 +68,7 @@ class TabFindPhones(QWidget):
         super().__init__()
         self.parent = parent
         self.found_items = []
+        self.keywords = self.load_keywords()
         
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(5, 5, 5, 5)
@@ -173,8 +170,28 @@ class TabFindPhones(QWidget):
         self.setLayout(main_layout)
         
         self.current_item_index = -1
-        self.original_text = ""
         self.edit_mode = False
+    
+    def load_keywords(self):
+        default_keywords = [
+            'contacts', 'office', 'phone', 'mobile', 'mob', 'tel', 'fax', 'email', 'call us',
+            'contact us', 'telephone', 'cell', 'whatsapp', 'viber', 'telegram', 'skype', 'contact', 'call'
+        ]
+        
+        try:
+            if os.path.exists('./settings.ini'):
+                config = configparser.ConfigParser()
+                config.read('./settings.ini', encoding='utf-8')
+                
+                if 'Keywords' in config and 'keywords' in config['Keywords']:
+                    keywords_str = config['Keywords']['keywords']
+                    keywords = [k.strip() for k in keywords_str.split(',') if k.strip()]
+                    if keywords:
+                        return keywords
+        except:
+            pass
+        
+        return default_keywords
         
     def on_item_selected(self, list_item):
         if not list_item:
@@ -187,15 +204,15 @@ class TabFindPhones(QWidget):
         self.current_item_index = item_index
         item_data = self.found_items[item_index]
         
-        self.original_text = item_data.get('original_text', item_data['full_text'])
-        
         text_changed = item_data.get('text_changed', False)
+        status = item_data.get('status', '')
         
         self.edit_button.setEnabled(True)
         self.pass_button.setEnabled(True)
-        self.save_button.setEnabled(text_changed)
         
-        if text_changed:
+        self.save_button.setEnabled(text_changed and status != 'passed')
+        
+        if text_changed and status != 'passed':
             self.save_button.setStyleSheet("background-color: #FFA500;")
         else:
             self.save_button.setStyleSheet("")
@@ -209,11 +226,16 @@ class TabFindPhones(QWidget):
         else:
             display_text = item_data['full_text']
             self.text_preview.setText(display_text)
-            self.highlighter.set_matches(item_data['matches'])
+            
+            # Ищем совпадения в тексте, который сейчас отображается в text_preview
+            current_displayed_text = self.text_preview.toPlainText()
+            matches_info = self.find_phone_matches(current_displayed_text)
+            self.highlighter.set_matches(matches_info['matches'])
+            
             self.text_preview.setVisible(True)
             self.text_edit.setVisible(False)
             self.edit_mode = False
-        
+    
     def on_text_changed(self):
         if self.current_item_index < 0 or self.current_item_index >= len(self.found_items):
             return
@@ -223,15 +245,20 @@ class TabFindPhones(QWidget):
         
         original_text = item_data.get('original_text', item_data['full_text'])
         text_changed = new_text != original_text
+        status = item_data.get('status', '')
         
         item_data['text_changed'] = text_changed
         if text_changed:
             item_data['edited_text'] = new_text
+            if status == 'passed':
+                item_data['status'] = ''
         
-        self.save_button.setEnabled(text_changed)
+        self.save_button.setEnabled(text_changed and status != 'passed')
         
-        if text_changed:
+        if text_changed and status != 'passed':
             self.save_button.setStyleSheet("background-color: #FFA500;")
+        else:
+            self.save_button.setStyleSheet("")
         
         self.update_item_colors()
         
@@ -241,11 +268,14 @@ class TabFindPhones(QWidget):
             item_index = item.data(Qt.UserRole)
             if item_index is not None and item_index < len(self.found_items):
                 item_data = self.found_items[item_index]
-                if item_data.get('status') == 'saved':
+                status = item_data.get('status', '')
+                text_changed = item_data.get('text_changed', False)
+                
+                if status == 'saved':
                     item.setBackground(QColor(144, 238, 144))
-                elif item_data.get('status') == 'passed':
+                elif status == 'passed':
                     item.setBackground(QColor(173, 216, 230))
-                elif item_data.get('text_changed', False):
+                elif text_changed:
                     item.setBackground(QColor(255, 165, 0))
                 else:
                     item.setBackground(Qt.transparent)
@@ -270,7 +300,7 @@ class TabFindPhones(QWidget):
         checked_count = 0
         phone_count = 0
         email_count = 0
-        cyprus_count = 0
+        keyword_count = 0
         total_properties = self.parent.state.get_property_count()
         
         for i in range(root_item.childCount()):
@@ -294,43 +324,36 @@ class TabFindPhones(QWidget):
                 if not en_item:
                     continue
                     
-                description = en_item.text(1) or ""
-                matches_info = self.find_phone_matches(description)
+                raw_description = en_item.text(1) or ""
+                
+                matches_info = self.find_phone_matches(raw_description)
                 matches = matches_info['matches']
                 stats = matches_info['stats']
                 
                 if matches:
                     found_count += 1
                     
-                    # Обновляем статистику
-                    if stats.get('cyprus', 0) > 0:
-                        cyprus_count += 1
-                    if stats.get('email', 0) > 0:
-                        email_count += 1
-                    if stats.get('phone', 0) > 0:
-                        phone_count += 1
+                    email_count += stats.get('email', 0)
+                    phone_count += stats.get('phone', 0)
+                    keyword_count += stats.get('keyword', 0)
                     
                     item_data = {
                         'id': property_id,
-                        'full_text': description,
-                        'original_text': description,
+                        'full_text': raw_description,
+                        'original_text': raw_description,
                         'desc_item': en_item,
-                        'matches': matches,
                         'stats': stats,
                         'status': '',
                         'text_changed': False,
                         'has_email': stats.get('email', 0) > 0,
                         'has_phone': stats.get('phone', 0) > 0,
-                        'has_cyprus': stats.get('cyprus', 0) > 0
+                        'has_keyword': stats.get('keyword', 0) > 0
                     }
                     self.found_items.append(item_data)
                     
-                    # Обновляем текст элемента списка
                     item_text = f"ID: {property_id} - {len(matches)} matches"
                     
                     type_indicators = []
-                    if stats.get('cyprus', 0) > 0:
-                        type_indicators.append(f"{stats['cyprus']} Cyprus")
                     if stats.get('email', 0) > 0:
                         type_indicators.append(f"{stats['email']} email")
                     if stats.get('phone', 0) > 0:
@@ -347,17 +370,21 @@ class TabFindPhones(QWidget):
         
         self.update_item_colors()
         
-        # Обновляем статистику
         stats_text = f"Found: {found_count} objects"
-        if cyprus_count > 0:
-            stats_text += f", {cyprus_count} with Cyprus code (357)"
+        type_stats = []
         if phone_count > 0:
-            stats_text += f", {phone_count} with phones"
+            type_stats.append(f"{phone_count} phones")
         if email_count > 0:
-            stats_text += f", {email_count} with emails"
+            type_stats.append(f"{email_count} emails")
+        if keyword_count > 0:
+            type_stats.append(f"{keyword_count} keywords")
+        
+        if type_stats:
+            stats_text += f" ({', '.join(type_stats)})"
+        
         if found_count > 0:
-            total_matches = sum(len(item['matches']) for item in self.found_items)
-            stats_text += f" (total matches: {total_matches})"
+            total_matches = sum(item['stats'].get('phone', 0) + item['stats'].get('email', 0) + item['stats'].get('keyword', 0) for item in self.found_items)
+            stats_text += f" - Total matches: {total_matches}"
         
         self.stats_label.setText(stats_text)
         self.copy_button.setEnabled(len(self.found_items) > 0)
@@ -373,13 +400,13 @@ class TabFindPhones(QWidget):
         
         if found_count > 0:
             message = f"Found {found_count} objects with contacts:\n"
-            if cyprus_count > 0:
-                message += f"• {cyprus_count} with Cyprus code (357)\n"
             if phone_count > 0:
                 message += f"• {phone_count} with phone numbers\n"
             if email_count > 0:
                 message += f"• {email_count} with email addresses\n"
-            total_matches = sum(len(item['matches']) for item in self.found_items)
+            if keyword_count > 0:
+                message += f"• {keyword_count} with keywords\n"
+            total_matches = sum(item['stats'].get('phone', 0) + item['stats'].get('email', 0) + item['stats'].get('keyword', 0) for item in self.found_items)
             message += f"• Total matches: {total_matches}"
             
             QMessageBox.information(self, "Search Complete", message)
@@ -388,104 +415,68 @@ class TabFindPhones(QWidget):
             
     def find_phone_matches(self, text):
         if not text:
-            return {'matches': [], 'stats': {}}
+            return {'matches': [], 'stats': {'phone': 0, 'email': 0, 'keyword': 0}}
         
         matches = []
-        stats = {
-            'phone': 0,
-            'email': 0,
-            'cyprus': 0,
-            'keyword': 0
-        }
+        stats = {'phone': 0, 'email': 0, 'keyword': 0}
         
-        # 1. Ищем email адреса
-        email_patterns = [
-            r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
-            r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\.[a-zA-Z]{2,}',
+        email_pattern = r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b'
+        
+        for match in re.finditer(email_pattern, text, re.IGNORECASE):
+            start, end = match.start(), match.end()
+            matches.append((start, end, 'email'))
+            stats['email'] += 1
+        
+        phone_patterns = [
+            r'\+\d{1,4}\s*\(\d{1,4}\)\s*\d[\s\-]*\d[\s\-]*\d[\s\-]*\d',
+            r'\(\d{1,4}\)\s*\d[\s\-]*\d[\s\-]*\d[\s\-]*\d[\s\-]*\d',
+            r'\d{3}[\s\-]\d{3}[\s\-]\d{4}',
+            r'\d{3}\s\d{3}\s\d{4}',
+            r'\+\d{7,15}',
+            r'\b\d{7,15}\b'
         ]
         
-        for pattern in email_patterns:
-            for match in re.finditer(pattern, text, re.IGNORECASE):
-                matches.append((match.start(), match.end(), 'email'))
-                stats['email'] += 1
-        
-        # 2. Ищем код 357 (Кипр) - отдельно подчеркиваем каждое вхождение
-        for match in re.finditer(r'357', text):
-            matches.append((match.start(), match.end(), 'cyprus'))
-            stats['cyprus'] += 1
-        
-        # 3. Ищем номера телефонов в различных форматах
-        
-        # Телефоны с + и 7+ цифр
-        plus_pattern = r'\+\d[\d\s\-\(\)]{6,}\d'
-        for match in re.finditer(plus_pattern, text):
-            # Проверяем что в совпадении есть минимум 7 цифр
-            digit_count = sum(1 for c in match.group() if c.isdigit())
-            if digit_count >= 7:
-                matches.append((match.start(), match.end(), 'phone'))
-                stats['phone'] += 1
-        
-        # Телефоны без + но с 7+ цифр
-        digit_pattern = r'\d[\d\s\-\(\)]{5,}\d'
-        for match in re.finditer(digit_pattern, text):
-            digit_count = sum(1 for c in match.group() if c.isdigit())
-            if digit_count >= 7:
-                # Проверяем что это не часть email и не код 357
-                is_part_of_email = False
-                for email_start, email_end, _ in matches:
-                    if match.start() >= email_start and match.end() <= email_end:
-                        is_part_of_email = True
-                        break
-                
-                is_part_of_cyprus = False
-                for cyprus_start, cyprus_end, _ in [(s, e, t) for (s, e, t) in matches if t == 'cyprus']:
-                    if match.start() >= cyprus_start and match.end() <= cyprus_end:
-                        is_part_of_cyprus = True
-                        break
-                
-                if not is_part_of_email and not is_part_of_cyprus:
-                    matches.append((match.start(), match.end(), 'phone'))
-                    stats['phone'] += 1
-        
-        # Стандартные форматы телефонов
-        standard_patterns = [
-            r'\(\d{3}\)\s*\d{3}[- ]?\d{4}',
-            r'\+\d{1,3}[\s\-]?\d{1,4}[\s\-]?\d{3}[\s\-]?\d{4}',
-            r'00\d{1,3}[\s\-]?\d{1,4}[\s\-]?\d{3}[\s\-]?\d{4}',
-        ]
-        
-        for pattern in standard_patterns:
+        for pattern in phone_patterns:
             for match in re.finditer(pattern, text):
-                # Проверяем что это не часть уже найденного совпадения
-                overlapping = False
-                for existing_start, existing_end, _ in matches:
-                    if not (match.end() <= existing_start or match.start() >= existing_end):
-                        overlapping = True
-                        break
+                phone_text = match.group()
+                start, end = match.start(), match.end()
                 
-                if not overlapping:
-                    matches.append((match.start(), match.end(), 'phone'))
-                    stats['phone'] += 1
+                digits = ''.join(c for c in phone_text if c.isdigit())
+                
+                if 7 <= len(digits) <= 15:
+                    is_part_of_email = False
+                    for email_start, email_end, _ in matches:
+                        if start >= email_start and end <= email_end:
+                            is_part_of_email = True
+                            break
+                    
+                    if not is_part_of_email:
+                        overlapping = False
+                        for existing_start, existing_end, existing_type in matches:
+                            if existing_type == 'phone':
+                                if not (end <= existing_start or start >= existing_end):
+                                    overlapping = True
+                                    break
+                        
+                        if not overlapping:
+                            matches.append((start, end, 'phone'))
+                            stats['phone'] += 1
         
-        # 4. Ищем ключевые слова и подсвечиваем их
-        keywords = ['contacts', 'office', 'phone', 'mobile', 'mob', 'tel', 'fax', 'email', 'call us',
-                   'contact us', 'telephone', 'cell', 'whatsapp', 'viber', 'telegram', 'skype']
-        
-        for keyword in keywords:
+        for keyword in self.keywords:
             pattern = r'\b' + re.escape(keyword) + r'\b'
             for match in re.finditer(pattern, text, re.IGNORECASE):
-                # Проверяем что это не часть уже найденного совпадения
-                overlapping = False
-                for existing_start, existing_end, _ in matches:
-                    if not (match.end() <= existing_start or match.start() >= existing_end):
-                        overlapping = True
+                start, end = match.start(), match.end()
+                
+                is_part_of_other = False
+                for other_start, other_end, other_type in matches:
+                    if start >= other_start and end <= other_end:
+                        is_part_of_other = True
                         break
                 
-                if not overlapping:
-                    matches.append((match.start(), match.end(), 'keyword'))
+                if not is_part_of_other:
+                    matches.append((start, end, 'keyword'))
                     stats['keyword'] += 1
         
-        # Сортируем совпадения по позиции начала
         matches.sort(key=lambda x: x[0])
         
         return {'matches': matches, 'stats': stats}
@@ -515,6 +506,12 @@ class TabFindPhones(QWidget):
             self.text_preview.setVisible(False)
             self.text_edit.setVisible(True)
             self.edit_mode = True
+            
+            item_data['text_changed'] = True
+            item_data['edited_text'] = new_text
+            if item_data.get('status') == 'passed':
+                item_data['status'] = ''
+            
             self.on_text_changed()
                 
     def save_description(self):
@@ -530,12 +527,9 @@ class TabFindPhones(QWidget):
         
         try:
             item_data['desc_item'].setText(1, new_text)
+            
             item_data['full_text'] = new_text
             item_data['original_text'] = new_text
-            
-            matches_info = self.find_phone_matches(new_text)
-            item_data['matches'] = matches_info['matches']
-            item_data['stats'] = matches_info['stats']
             item_data['status'] = 'saved'
             item_data['text_changed'] = False
             
@@ -543,7 +537,11 @@ class TabFindPhones(QWidget):
                 del item_data['edited_text']
             
             self.text_preview.setText(new_text)
-            self.highlighter.set_matches(item_data['matches'])
+            
+            # Ищем совпадения в тексте, который сейчас отображается в text_preview
+            current_displayed_text = self.text_preview.toPlainText()
+            matches_info = self.find_phone_matches(current_displayed_text)
+            self.highlighter.set_matches(matches_info['matches'])
             
             self.text_preview.setVisible(True)
             self.text_edit.setVisible(False)
@@ -573,8 +571,9 @@ class TabFindPhones(QWidget):
             self.text_preview.setVisible(True)
             self.text_edit.setVisible(False)
             self.edit_mode = False
-            self.save_button.setEnabled(False)
-            self.save_button.setStyleSheet("")
+        
+        self.save_button.setEnabled(False)
+        self.save_button.setStyleSheet("")
         
         self.update_item_colors()
         self.on_item_selected(self.id_list.item(self.current_item_index))
