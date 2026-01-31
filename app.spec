@@ -71,5 +71,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='./app.ico',
-    onefile=True
+    onefile=True # if in command line: pyinstaller --onefile app.spec
 )
